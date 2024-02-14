@@ -107,7 +107,7 @@ integration_weights(grid::SupportGrid, args...; kwargs...) = integration_weights
 
 """
     integrate(grid::SupportGrid, u::AbstractArray; dims::Int=1)
-Returns the integral of `u` over `grid` along the dimension `dims` via matrix multiplication.
+Returns the integral of `u` over `grid` via dimension permutation, reshaping and matrix multiplication.
 
 See also [`LinearAlgebra.dot`](@ref).
 """
@@ -133,7 +133,7 @@ function integrate(grid::SupportGrid, u::AbstractArray; dims::Int=1)
   
   # integrate all flattened dimensions and unflatten them
   # note that this method makes it not efficient to inline this function
-  return reshape([weights ⋅ u_reshaped[:,i] for i=1:n], u_size_masked)
+  return reshape([@views weights ⋅ u_reshaped[:,i] for i=1:n], u_size_masked)
 end
 
 """
