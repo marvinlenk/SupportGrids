@@ -6,6 +6,7 @@ module SupportGrids
 using LinearAlgebra
 using DSP
 using RecipesBase
+using UnPack: @unpack
 
 ##########
 # Export #
