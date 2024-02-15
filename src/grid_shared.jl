@@ -1,6 +1,6 @@
-###########################
-# Base functions on Grids #
-###########################
+############################################
+# Multiple dispatch for functions on Grids #
+############################################
 Base.firstindex(grid::SupportGrid) = 1
 Base.lastindex(grid::SupportGrid) = grid.L
 Base.length(grid::SupportGrid) = grid.L
@@ -13,7 +13,17 @@ Base.collect(grid::SupportGrid) = grid.points
 Base.eltype(grid::SupportGrid) = eltype(grid.points)
 Base.eachindex(grid::SupportGrid) = eachindex(grid.points)
 -(grid::SupportGrid) = -grid.points
++(grid::SupportGrid) = +grid.points
 Base.show(io::IO, grid::SupportGrid) = print_gridparams(io, grid)
+
+"""
+    *(grid::SupportGrid, u::AbstractArray) = integrate(grid, u)
+
+See also [`integrate`](@ref).
+"""
+*(grid::SupportGrid, u::AbstractArray; kwargs...) = integrate(grid, u; kwargs...)
+dot(grid::SupportGrid, u) = dot(grid.points, u)
+dot(u, grid::SupportGrid) = dot(u, grid.points)
 
 # Make Grids callable
 (grid::SupportGrid)(x::Int) = grid.points[x]
@@ -106,45 +116,50 @@ end
 integration_weights(grid::SupportGrid, args...; kwargs...) = integration_weights(grid.points, args...; kwargs...)
 
 """
-    integrate(grid::SupportGrid, u::AbstractArray; dims::Int=1)
-Returns the integral of `u` over `grid` via dimension permutation, reshaping and matrix multiplication.
+    integrate!(out::AbstractArray, grid::SupportGrid, u::AbstractArray; dims::Int=1)
+Writes the integral of `u` over `grid` to`out` using dimension permutation, reshaping and matrix multiplication. Integration over first dimension is most efficient.
 
-See also [`LinearAlgebra.dot`](@ref).
+See also [`integrate`](@ref), [`LinearAlgebra.dot`](@ref).
 """
-function integrate(grid::SupportGrid, u::AbstractArray; dims::Int=1)
+function integrate!(out::AbstractArray, grid::SupportGrid, u::AbstractArray; dims::Int=1)
+  @assert size(x) == size(u)
   @assert dims <= ndims(u)
   weights = grid.op.weights
-  u_size = size(u)
-  dims_mask = [true for i=1:ndims(u)]
-  dims_mask[dims] = false
-  
-  u_size_masked = u_size[dims_mask]
-  n = prod(u_size_masked)
+  n = prod(size(u)[1:end .!= dims]) # leftover dimensions flattened size
   
   # permute such that integrated dimension is in first place
   u_permuted = if dims==1
     u
   else
-    permutedims(u, [dims, collect(1:ndims(u))[dims_mask]...])
+    permutedims(u, [dims, collect(1:ndims(u))[1:end .!= dims]...])
   end
   
   # flatten non-integrated dimensions
-  u_reshaped = reshape(u_permuted, (u_size[dims], n))
+  u_reshaped = reshape(u_permuted, size(u, dims), n)
+  out_reshaped = reshape(out, n)
   
-  # integrate all flattened dimensions and unflatten them
-  # note that this method makes it not efficient to inline this function
-  return reshape([@views weights ⋅ u_reshaped[:,i] for i=1:n], u_size_masked)
+  # take the integrals
+  out_reshaped .= [@views weights ⋅ u_reshaped[:,i] for i=1:n]
+  
+  return out
 end
+
+"""
+    integrate(grid::SupportGrid, u::AbstractArray; dims::Int=1)
+Returns the integral of `u` over `grid` via dimension permutation, reshaping and matrix multiplication. Integration over first dimension is most efficient.
+
+See also [`integrate!`](@ref), [`LinearAlgebra.dot`](@ref).
+"""
+integrate(grid::SupportGrid, u::AbstractArray; dims::Int=1
+  ) = integrate!(zeros(eltype(u), size(u)[1:end .!= dims]), grid, u; dims)
 
 """
     integrate(grid::SupportGrid, u::AbstractVector)
-Returns the integral of `u` over `grid` using the `LinearAlgebra` dot-product.
+Writes the integral of `u` over `grid` to `out` using the `LinearAlgebra` dot-product.
 
 See also [`LinearAlgebra.dot`](@ref).
 """
-@inline function integrate(grid::SupportGrid, u::AbstractVector)
-  grid.op.weights ⋅ u
-end
+integrate(grid::SupportGrid, u::AbstractVector) = grid.op.weights ⋅ u
 
 
 ##################
