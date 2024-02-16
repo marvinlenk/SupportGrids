@@ -37,7 +37,8 @@ dot(u, grid::SupportGrid) = dot(u, grid.points)
 """
     simpson_coefficients(i::Int, differences::AbstractVector)
 
-Helper function to extract coefficients for Simpson's rule. See [Wikipedia](https://en.wikipedia.org/wiki/Simpson%27s_rule) for details.
+Helper function to extract coefficients for Simpson's rule.
+See [Wikipedia](https://en.wikipedia.org/wiki/Simpson%27s_rule) for details.
 
 See also [`integration_weights`](@ref), ['simpson_coefficients_odd'](@ref).
 """
@@ -53,7 +54,8 @@ end
 """
     simpson_coefficients_odd(i::Int, differences::AbstractVector)
 
-Helper function to correct the boundary values for grids of odd length. See [Wikipedia](https://en.wikipedia.org/wiki/Simpson%27s_rule) for details.
+Helper function to correct the boundary values for grids of odd length.
+See [Wikipedia](https://en.wikipedia.org/wiki/Simpson%27s_rule) for details.
 
 [`integration_weights`](@ref), ['simpson_coefficients'](@ref).
 """
@@ -113,11 +115,13 @@ end
 
 # concider using FiniteDifferences in the future
 # Wrapper for SupportGrid input
-integration_weights(grid::SupportGrid, args...; kwargs...) = integration_weights(grid.points, args...; kwargs...)
+integration_weights(grid::SupportGrid, args...; kwargs...
+  ) = integration_weights(grid.points, args...; kwargs...)
 
 """
     integrate!(out::AbstractArray, grid::SupportGrid, u::AbstractArray; dims::Int=1)
-Writes the integral of `u` over `grid` to`out` using dimension permutation, reshaping and matrix multiplication. Integration over first dimension is most efficient.
+Writes the integral of `u` over `grid` to`out` using dimension permutation, reshaping and
+matrix multiplication. Integration over first dimension is most efficient.
 
 See also [`integrate`](@ref), [`LinearAlgebra.dot`](@ref).
 """
@@ -146,7 +150,8 @@ end
 
 """
     integrate(grid::SupportGrid, u::AbstractArray; dims::Int=1)
-Returns the integral of `u` over `grid` via dimension permutation, reshaping and matrix multiplication. Integration over first dimension is most efficient.
+Returns the integral of `u` over `grid` via dimension permutation, reshaping and matrix
+multiplication. Integration over first dimension is most efficient.
 
 See also [`integrate!`](@ref), [`LinearAlgebra.dot`](@ref).
 """
