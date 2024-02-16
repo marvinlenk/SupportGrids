@@ -4,13 +4,11 @@ module SupportGrids
 # Packages #
 ############
 using RecipesBase: @recipe
-using UnPack: @unpack
 import Base.*, Base.+, Base.-
 
-using DSP: _zeropad!
-using DSP.FFTW: unsafe_execute!, fftfreq, rfftfreq
-using DSP.FFTW: plan_fft, plan_rfft, plan_ifft, plan_irfft
-using DSP.FFTW.AbstractFFTs: Plan, ScaledPlan
+using FFTW: unsafe_execute!, fftfreq, rfftfreq
+using FFTW: plan_fft, plan_rfft, plan_ifft, plan_irfft
+using FFTW.AbstractFFTs: Plan, ScaledPlan
 
 using LinearAlgebra: ⋅
 import LinearAlgebra.dot
@@ -64,7 +62,9 @@ abstract type AbstractGridOps{T<:Any} end
 @doc "Alias: `conv = convolution!`" convolution!
 @doc "Alias: `xcorr = crosscorrelation`" crosscorrelation
 
+include("utility.jl")
 include("grid_shared.jl")
+# include("non_grid_analysis.jl")
 # include("nonlinear_shared.jl")
 
 # include("grids/composite_grid.jl")
