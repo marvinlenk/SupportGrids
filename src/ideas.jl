@@ -51,3 +51,25 @@ function integrate(grid::SupportGrid, u::AbstractArray; dims::Int=1)
   
   return reshape(sum(w .* u_permuted, dims=1), u_size_masked)
 end
+
+# Not sure if this should be in here
+"""
+Kramers-Kronig transformation of a function defined on a linear grid.
+
+NOTE: `u` is assumed to be analytic in the lower half-plane. Multiply the 
+`:imag` part by (-1) for functions analytic in the upper half-plane.
+"""
+function kramerskronig(lingrid::LinearGrid, u::AbstractVector{<:Real}, u_out::Symbol)
+  @assert u_out === :real || u_out === :imag
+  return hilbert(lingrid, ifelse(u_out === :real, u, -u))
+end
+function kramerskronig!(lingrid::LinearGrid, u::AbstractVector{Complex{T}}, u_out::Symbol) where {T<:Real}
+  u = reinterpret(T, u)
+  @views u1, u2 = u[1:2:end], u[2:2:end]
+
+  if u_out === :real
+    u1 .= kramerskronig(lingrid, u2, u_out)
+  else
+    u2 .= kramerskronig(lingrid, u1, u_out)
+  end
+end
