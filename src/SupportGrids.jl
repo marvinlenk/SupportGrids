@@ -16,9 +16,9 @@ using LinearAlgebra: ⋅
 # Export #
 ##########
 export
-  AbstractMesh,
-  AbstractNonlinearMesh,
-  AbstractMeshOps,
+  SupportGrid,
+  AbstractNonlinearGrid,
+  AbstractGridOps,
   # CompositeGrid,
   # ExpGrid,
   # ExpTanGrid,

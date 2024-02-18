@@ -2,8 +2,8 @@
 # Multiple dispatch for functions on Grids #
 ############################################
 Base.firstindex(grid::SupportGrid) = 1
-Base.lastindex(grid::SupportGrid) = grid.L
-Base.length(grid::SupportGrid) = grid.L
+Base.lastindex(grid::SupportGrid) = grid.len
+Base.length(grid::SupportGrid) = grid.len
 Base.iterate(grid::SupportGrid, state=1) = iterate(grid.points, state)
 Base.getindex(grid::SupportGrid, i...) = grid.points[i...]
 Base.minimum(grid::SupportGrid) = grid.xmin
