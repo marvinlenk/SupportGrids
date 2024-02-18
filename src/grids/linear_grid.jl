@@ -1,37 +1,4 @@
 """
-    LinearGrid(xmin::Real, xmax::Real, len::Int; complex_op=false, T::Type=Float64)
-
-Generates an equidistant grid from `xmin` to `xmax` with `len` points. If operations on
-complex arrays are expected, `complex_op` should be set to `true`.
-
-# Fields
-- `xmin`, `xmax`, `len` defined above.
-- `points`: Vector of grid points `pᵢ`.
-- `δ`: Discretisation parameter of `points`, i.e. `pᵢ₊₁ = pᵢ + δ`.
-- `op`: Tools for operations on this `LinearGrid`.
-
-See also [`LinearGridOps`](@ref).
-"""
-struct LinearGrid{T} <: SupportGrid{T}
-  xmin::T               # Left bound
-  xmax::T               # Right bound
-  len::Int              # Number of points
-  points::Vector{T}     # Array of grid points
-  δ::T                  # Frequency discretisation
-  op::LinearGridOps{T}
-
-  function LinearGrid(xmin::Real, xmax::Real, len::Int;
-      complex_op::Bool=false, T::Type=Float64
-    )
-    δ = (xmax - xmin) / (L - 1)
-    points = collect(range(xmin, stop=xmax, length=L))
-    new{T}(xmin, xmax, L, dx, points, LinearGridOps(points, complex_op; δ))
-  end
-  #
-  LinearGrid(::Type{T}, args...; kwargs...) where T = LinearGrid(args...; T, kwargs...)
-end
-
-"""
     LinearGridOps(points::Vector{T}, complex_op::Bool;
                   integration_method::Symbol=:trapz,
                   δ::T=-(extrema(points)...)/(length(points)-1)) where T
@@ -67,10 +34,10 @@ struct LinearGridOps{T} <: AbstractGridOps{T}
       integration_method::Symbol=:trapz, δ::T=-(extrema(points)...)/(length(points)-1)
       ) where T
     weights = integration_weights(points, integration_method)
-    len_padded = nextpow(2, 2*length(points)-1) # make it a power of 2
+    padded_len = nextpow(2, 2*length(points)-1) # double the lebgth and fill to the next power of 2
     if T <: BigFloat len_padded -= 1 end # Why?
     
-    padded = zeros(complex_op ? Complex{T} : T, len_padded)
+    padded = zeros(complex_op ? Complex{T} : T, padded_len)
     ft⁻¹_work = similar(padded)
     ft = complex_op ? plan_fft(ft⁻¹_work) : plan_rfft(ft⁻¹_work)
     ft_work1 = zeros(Complex{T}, ft.osz)
@@ -91,15 +58,52 @@ struct LinearGridOps{T} <: AbstractGridOps{T}
 end
 
 """
+    LinearGrid(xmin::Real, xmax::Real, len::Int; complex_op=false, T::Type=Float64)
+
+Generates an equidistant grid from `xmin` to `xmax` with `len` points. If operations on
+complex arrays are expected, `complex_op` should be set to `true`.
+
+# Fields
+- `xmin`, `xmax`, `len` defined above.
+- `points`: Vector of grid points `pᵢ`.
+- `δ`: Discretisation parameter of `points`, i.e. `pᵢ₊₁ = pᵢ + δ`.
+- `op`: Tools for operations on this `LinearGrid`.
+
+See also [`LinearGridOps`](@ref).
+"""
+struct LinearGrid{T} <: SupportGrid{T}
+  xmin::T               # Left bound
+  xmax::T               # Right bound
+  len::Int              # Number of points
+  points::Vector{T}     # Array of grid points
+  δ::T                  # Frequency discretisation
+  op::LinearGridOps{T}
+
+  function LinearGrid(xmin::Real, xmax::Real, len::Int;
+      complex_op::Bool=false, T::Type=Float64
+    )
+    indices = 0:(len-1)
+    
+    δ = (xmax - xmin) / (len - 1)
+    points = δ .* collect(indices) .+ xmin
+    points[end] = xmax
+    
+    new{T}(xmin, xmax, len, points, δ, LinearGridOps(points, complex_op; δ))
+  end
+  #
+  LinearGrid(::Type{T}, args...; kwargs...) where T = LinearGrid(args...; T, kwargs...)
+end
+
+"""
 Convolution of 2 functions defined on a linear grid
 """
 function convolution(grid::LinearGrid, u::AbstractVector, v::AbstractVector)
   (; padded, ft_work1, ft_work2, ft⁻¹_work, ft, ft⁻¹, conv_shift) = grid.op
   
-  unsafe_execute!(ft, unsafe_copyto!((padded, u), f1FFT)
-  unsafe_execute!(ft, _zeropad!(padded, v), f2)
-  @. f2 *= f1 * conv_shift
-  unsafe_execute!(FT⁻¹.p, f2, out)
+  unsafe_execute!(ft, _zeropad!(padded, u), ft_work1)
+  unsafe_execute!(ft, _zeropad!(padded, v), ft_work2)
+  @. ft_work2 *= ft_work1 * conv_shift
+  unsafe_execute!(FT⁻¹.p, ft_work2, out)
   return out[1:lingrid.L]
 end
 
