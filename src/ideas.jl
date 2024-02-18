@@ -73,3 +73,22 @@ function kramerskronig!(lingrid::LinearGrid, u::AbstractVector{Complex{T}}, u_ou
     u2 .= kramerskronig(lingrid, u1, u_out)
   end
 end
+
+
+
+
+# not sure if we want this
+"""
+Scaling function for the logarithmic grid - x0 has to be added
+"""
+_lineargrid(i, a, b) = a * i + b
+
+"""
+Scaling function for the logarithmic grid - x0 has to be added
+"""
+function _lineargrid_params(xmin, xmax, len)
+  b = xmin
+  a = (xmax - b) / (len - 1)
+  return a, b
+end
+
