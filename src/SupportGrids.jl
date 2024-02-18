@@ -11,7 +11,6 @@ using FFTW: plan_fft, plan_rfft, plan_ifft, plan_irfft
 using FFTW.AbstractFFTs: Plan, ScaledPlan
 
 using LinearAlgebra: ⋅
-import LinearAlgebra.dot
 
 ##########
 # Export #

@@ -22,8 +22,6 @@ Base.show(io::IO, grid::SupportGrid) = print_gridparams(io, grid)
 See also [`integrate`](@ref).
 """
 *(grid::SupportGrid, u::AbstractArray; kwargs...) = integrate(grid, u; kwargs...)
-dot(grid::SupportGrid, u) = dot(grid.points, u)
-dot(u, grid::SupportGrid) = dot(u, grid.points)
 
 # Make Grids callable
 (grid::SupportGrid)(x::Int) = grid.points[x]
