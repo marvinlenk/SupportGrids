@@ -94,6 +94,6 @@ export xcorr#, xcorr!
 ####################
 # Plotting recipes #
 ####################
-@recipe f(::Type{T}, grid::T) where T <: SupportGrid = grid.Grid
+@recipe f(::Type{T}, grid::T) where T <: SupportGrid = grid.points
 
 end
