@@ -104,37 +104,37 @@ function convolution(grid::LinearGrid, u::AbstractVector, v::AbstractVector)
   unsafe_execute!(ft, _zeropad!(padded, v), ft_work2)
   @. ft_work2 *= ft_work1 * conv_shift
   unsafe_execute!(FT⁻¹.p, ft_work2, out)
-  return out[1:lingrid.L]
+  return out[1:lingrid.l]
 end
 
 """
 Cross-Correlation of 2 functions defined on a linear grid
 """
-function crosscorrelation(lingrid::LinearGrid, u::AbstractVector, v::AbstractVector)
-  (; padded, f1, f2, out, FT⁻¹, FT, corr_shift) = lingrid.op
+function crosscorrelation(grid::LinearGrid, u::AbstractVector, v::AbstractVector)
+  (; padded, ft_work1, ft_work2, ft⁻¹_work, ft, ft⁻¹, corr_shift) = grid.op
   
-  unsafe_execute!(FT, _zeropad!(padded, u), f1)
-  unsafe_execute!(FT, _zeropad!(padded, v), f2)
-  @. f2 *= conj(f1) * corr_shift
-  unsafe_execute!(FT⁻¹.p, f2, out)
-  return out[1:lingrid.L]
+  unsafe_execute!(ft, _zeropad!(padded, u), ft_work1)
+  unsafe_execute!(ft, _zeropad!(padded, v), ft_work2)
+  @. ft_work2 *= conj(ft_work1) * corr_shift
+  unsafe_execute!(ft⁻¹.p, ft_work2, ft⁻¹_work)
+  return out[1:grid.l]
 end
 
 """
 Hilbert transformation of a function defined on a linear grid
 """
-@inline function hilbert(lingrid::LinearGrid, u::AbstractVector)
-  (; padded, f1, out, FT⁻¹, FT, fft_1_x) = lingrid.op
+@inline function hilbert(grid::LinearGrid, u::AbstractVector)
+  (; padded, ft_work1, ft⁻¹_work, ft, ft⁻¹, fft_x⁻¹) = grid.op
   
   unsafe_execute!(FT, _zeropad!(padded, u), f1)
   @. f1 *= fft_1_x
   unsafe_execute!(FT⁻¹.p, f1, out)
-  return out[1:lingrid.L]
+  return out[1:grid.L]
 end
 
 """
 Get index of y on the mesh (not rounded - i.e. allow for interpolated values)
 """
-function invert_grid(lm::LinearGrid, y::Real)
-  return 1 + (y - lm.xmin) / lm.dx
+function invert_grid(grid::LinearGrid, y::Real)
+  return 1 + (y - grid.xmin) / grid.δ
 end
