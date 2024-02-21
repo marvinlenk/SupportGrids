@@ -21,7 +21,7 @@ struct LinearGridOps{T} <: AbstractGridOps{T}
   weights::Vector{T}
   ft::Plan
   ft⁻¹::ScaledPlan
-  frequencies::Vector{Complex{T}}
+  frequencies::Vector{T}
   padded::Vector{<:Union{T, Complex{T}}}
   ft_work1::Vector{Complex{T}}
   ft_work2::Vector{Complex{T}}
