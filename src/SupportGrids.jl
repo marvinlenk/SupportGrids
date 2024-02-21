@@ -6,7 +6,7 @@ module SupportGrids
 using RecipesBase: @recipe
 import Base.*, Base.+, Base.-
 
-using FFTW: unsafe_execute!, fftfreq, rfftfreq
+using FFTW: unsafe_execute!, assert_applicable, fftfreq, rfftfreq
 using FFTW: plan_fft, plan_rfft, plan_ifft, plan_irfft
 using FFTW.AbstractFFTs: Plan, ScaledPlan
 
@@ -31,16 +31,21 @@ export
   # SqrtGrid,
   # TanGrid,
   
+  fft,
+  fft!,
+  ifft,
+  ifft!,
+
   derivative,
   # derivative!,
   integrate,
   integrate!,
   convolution,
-  # convolution!,
+  convolution!,
   crosscorrelation,
-  # crosscorrelation!,
+  crosscorrelation!,
   hilbert,
-  # hilbert!,
+  hilbert!,
   
   invert_grid,
   print_gridparams

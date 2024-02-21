@@ -12,7 +12,8 @@ discretization `δ`. For `integration_method` options, see [`integral_weights`](
 - `frequencies`: Points in Fourier space.
 - `padded`: Work array for padded vector / FFT input.
 - `ft_work1`, `ft_work2`, `ft⁻¹_work`: Work array for (inverse) FFT output.
-- `conv_shift`, `xcorr_shift`: FFT Phase correction arrays due to frequency shift.
+- `ft_shift`, `ft⁻¹_shift`: FFT Phase and scale correction due to grid offset.
+- `conv_shift`: Same as above with added scaling for `conv`.
 - `fft_x⁻¹`: Fourier transform of `1/x` used for the Hilbert transform.
 
 See also [`LinearGridOps`](@ref).
@@ -26,8 +27,9 @@ struct LinearGridOps{T} <: AbstractGridOps{T}
   ft_work1::Vector{Complex{T}}
   ft_work2::Vector{Complex{T}}
   ft⁻¹_work::Vector{<:Union{T, Complex{T}}}
+  ft_shift::Vector{Complex{T}}
+  ft⁻¹_shift::Vector{Complex{T}}
   conv_shift::Vector{Complex{T}}
-  xcorr_shift::Vector{Complex{T}}
   fft_x⁻¹::Vector{Complex{T}}
   
   function LinearGridOps(points::Vector{T}, complex_op::Bool;
@@ -47,13 +49,14 @@ struct LinearGridOps{T} <: AbstractGridOps{T}
     frequencies = complex_op ? fftfreq(padded_len) : rfftfreq(padded_len)
     ωₛ = points[1] * 2π * frequencies / δ # Phases due to the original domain offset
     
-    # NOTE: This is normalized (δ and scale)
-    conv_shift = exp.(-im * ωₛ) * δ * ft⁻¹.scale
-    xcorr_shift = conj.(conv_shift)
+    # Includes scale of unitary FT
+    ft_shift = exp.(-im * ωₛ) * δ
+    ft⁻¹_shift = exp.(im * ωₛ) * ft⁻¹.scale / δ
+    conv_shift = ft_shift * ft⁻¹.scale
     fft_x⁻¹ = -im * sign.(frequencies) * ft⁻¹.scale
     
     new{T}(weights,ft,ft⁻¹,frequencies,padded,ft_work1,ft_work2,ft⁻¹_work,
-      conv_shift,xcorr_shift,fft_x⁻¹)
+      ft_shift,ft⁻¹_shift,conv_shift,fft_x⁻¹)
   end
 end
 
@@ -95,42 +98,116 @@ struct LinearGrid{T} <: SupportGrid{T}
 end
 
 """
-Convolution of 2 functions defined on a linear grid
+Apply FFT of grid to input
 """
-function convolution(grid::LinearGrid, u::AbstractVector, v::AbstractVector)
-  (; padded, ft_work1, ft_work2, ft⁻¹_work, ft, ft⁻¹, conv_shift) = grid.op
+function fft!(grid::LinearGrid, out::AbstractVector, u::AbstractVector)
+  (; padded, ft, ft⁻¹, ft_shift) = grid.op
   
+  assert_applicable(ft, padded, out)
+  unsafe_execute!(ft, _zeropad!(padded, u), out)
+  @. out *= ft_shift
+  
+  return out
+end
+
+fft(grid::LinearGrid, u::AbstractVector) = fft!(grid, zero(grid.op.ft_work1), u)
+
+"""
+Internal function that works on padded arrays
+"""
+function _ifft!(grid::LinearGrid, out::AbstractVector, u::AbstractVector)
+  (; ft_work1, ft⁻¹, ft⁻¹_shift) = grid.op
+  
+  assert_applicable(ft⁻¹.p, ft_work1, out)
+  _zeropad!(ft_work1, u; fillzero=true)
+  @. ft_work1 *= ft⁻¹_shift
+  unsafe_execute!(ft⁻¹.p, ft_work1, out)
+  
+  return out
+end
+
+"""
+Apply inverse FFT of grid to input
+"""
+ifft!(grid::LinearGrid, out::AbstractVector, u::AbstractVector
+  ) = out .= @views _ifft!(grid, grid.op.ft⁻¹_work, u)[1:grid.len]
+
+ifft(grid::LinearGrid, u::AbstractVector
+  ) = ifft!(grid, zeros(eltype(grid.op.ft⁻¹_work), grid.len), u)
+
+"""
+Internal function that works on padded arrays
+"""
+function _convolution!(grid::LinearGrid, out::AbstractVector,
+    u::AbstractVector,v::AbstractVector)
+  (; padded, ft_work1, ft_work2, ft, ft⁻¹, conv_shift) = grid.op
+  
+  assert_applicable(ft⁻¹.p, ft_work2, out)
   unsafe_execute!(ft, _zeropad!(padded, u), ft_work1)
   unsafe_execute!(ft, _zeropad!(padded, v), ft_work2)
   @. ft_work2 *= ft_work1 * conv_shift
-  unsafe_execute!(FT⁻¹.p, ft_work2, out)
-  return out[1:lingrid.l]
+  unsafe_execute!(ft⁻¹.p, ft_work2, out)
+  
+  return out
 end
 
 """
-Cross-Correlation of 2 functions defined on a linear grid
+Convolution - takes non-padded arrays as input (and output)
 """
-function crosscorrelation(grid::LinearGrid, u::AbstractVector, v::AbstractVector)
-  (; padded, ft_work1, ft_work2, ft⁻¹_work, ft, ft⁻¹, corr_shift) = grid.op
+convolution!(grid::LinearGrid, out::AbstractVector,
+  u::AbstractVector,v::AbstractVector
+  ) = out .= @views _convolution!(grid, grid.op.ft⁻¹_work, u, v)[1:grid.len]
+
+convolution(grid::LinearGrid, u::AbstractVector, v::AbstractVector
+  ) = convolution!(grid, zero(u), u, v)
+
+"""
+Internal function that works on padded arrays
+"""
+function _crosscorrelation!(grid::LinearGrid, out::AbstractVector,
+    u::AbstractVector, v::AbstractVector)
+  (; padded, ft_work1, ft_work2, ft, ft⁻¹, corr_shift) = grid.op
   
+  assert_applicable(ft⁻¹.p, ft_work2, out)
   unsafe_execute!(ft, _zeropad!(padded, u), ft_work1)
   unsafe_execute!(ft, _zeropad!(padded, v), ft_work2)
-  @. ft_work2 *= conj(ft_work1) * corr_shift
-  unsafe_execute!(ft⁻¹.p, ft_work2, ft⁻¹_work)
-  return out[1:grid.l]
+  @. ft_work2 *= conj(ft_work1 * corr_shift)
+  unsafe_execute!(ft⁻¹.p, ft_work2, out)
+  
+  return out
 end
 
 """
-Hilbert transformation of a function defined on a linear grid
+Cross-correlation - takes non-padded arrays as input (and output)
 """
-@inline function hilbert(grid::LinearGrid, u::AbstractVector)
-  (; padded, ft_work1, ft⁻¹_work, ft, ft⁻¹, fft_x⁻¹) = grid.op
+crosscorrelation!(grid::LinearGrid, out::AbstractVector,
+  u::AbstractVector, v::AbstractVector
+  ) = out .= @views _crosscorrelation!(grid, grid.op.ft⁻¹_work, u, v)[1:grid.len]
+
+crosscorrelation(grid::LinearGrid, u::AbstractVector, v::AbstractVector
+  ) = crosscorrelation!(grid, zero(u), u, v)
+
+"""
+Internal function that works on padded arrays
+"""
+function _hilbert!(grid::LinearGrid, out::AbstractVector, u::AbstractVector)
+  (; padded, ft_work1, ft, ft⁻¹, fft_x⁻¹) = grid.op
   
-  unsafe_execute!(FT, _zeropad!(padded, u), f1)
-  @. f1 *= fft_1_x
-  unsafe_execute!(FT⁻¹.p, f1, out)
-  return out[1:grid.L]
+  assert_applicable(ft⁻¹.p, ft_work1, out)
+  unsafe_execute!(ft, _zeropad!(padded, u), ft_work1)
+  @. ft_work1 *= fft_x⁻¹
+  unsafe_execute!(ft⁻¹.p, ft_work1, out)
+  
+  return out
 end
+
+"""
+Hilbert transform - takes non-padded arrays as input (and output)
+"""
+hilbert!(grid::LinearGrid, out::AbstractVector, u::AbstractVector
+  ) = out .= @views _hilbert!(grid, grid.op.ft⁻¹_work, u)[1:grid.len]
+
+hilbert(grid::LinearGrid, u::AbstractVector) = hilbert!(grid, zero(u), u)
 
 """
 Get index of y on the mesh (not rounded - i.e. allow for interpolated values)
