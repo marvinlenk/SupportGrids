@@ -6,8 +6,8 @@ module SupportGrids
 using RecipesBase: @recipe
 import Base.*, Base.+, Base.-
 
-using FFTW: unsafe_execute!, assert_applicable, fftfreq, rfftfreq
-using FFTW: plan_fft, plan_rfft, plan_ifft, plan_irfft
+using FFTW: unsafe_execute!, assert_applicable, fftshift, fft, bfft
+using FFTW: plan_fft, plan_rfft, plan_bfft, plan_brfft
 using FFTW.AbstractFFTs: Plan, ScaledPlan
 
 using LinearAlgebra: ⋅
@@ -16,39 +16,37 @@ using LinearAlgebra: ⋅
 # Export #
 ##########
 export
-  SupportGrid,
-  AbstractNonlinearGrid,
-  AbstractGridOps,
-  # CompositeGrid,
-  # ExpGrid,
-  # ExpTanGrid,
-  # ExpExpGrid,
-  # InvLogGrid,
-  # InvLogTanGrid,
-  LinearGrid,
-  # LogGrid,
-  # LogTanGrid,
-  # SqrtGrid,
-  # TanGrid,
-  
-  fft,
-  fft!,
-  ifft,
-  ifft!,
+    SupportGrid,
+    AbstractNonlinearGrid,
+    AbstractGridOps,
+    # CompositeGrid,
+    # ExpGrid,
+    # ExpTanGrid,
+    # ExpExpGrid,
+    # InvLogGrid,
+    # InvLogTanGrid,
+    LinearGrid,
+    # LogGrid,
+    # LogTanGrid,
+    # SqrtGrid,
+    # TanGrid,
 
-  derivative,
-  # derivative!,
-  integrate,
-  integrate!,
-  convolution,
-  convolution!,
-  crosscorrelation,
-  crosscorrelation!,
-  hilbert,
-  hilbert!,
-  
-  invert_grid,
-  print_gridparams
+    ft,
+    ft!,
+    bft,
+    bft!,
+    derivative,
+    # derivative!,
+    integrate,
+    integrate!,
+    convolution,
+    convolution!,
+    crosscorrelation,
+    crosscorrelation!,
+    hilbert,
+    hilbert!,
+    invert_grid,
+    print_gridparams
 
 #############
 # Abstracts #
@@ -99,6 +97,6 @@ export xcorr#, xcorr!
 ####################
 # Plotting recipes #
 ####################
-@recipe f(::Type{T}, grid::T) where T <: SupportGrid = grid.points
+@recipe f(::Type{T}, grid::T) where {T<:SupportGrid} = grid.points
 
 end
