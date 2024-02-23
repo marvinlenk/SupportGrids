@@ -25,3 +25,9 @@ Manifest.toml
 
 # Jupyter files
 **/.ipynb_checkpoints/
+
+#VSCode settings
+settings.json
+
+# Pluto notebooks
+notebooks/
