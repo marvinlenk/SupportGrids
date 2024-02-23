@@ -165,6 +165,31 @@ See also [`LinearAlgebra.dot`](@ref).
 integrate(grid::SupportGrid, u::AbstractVector) = grid.op.weights ⋅ u
 
 
+
+###########################
+# Operations on functions #
+###########################
+integrate(grid::SupportGrid, u::Function; kwargs...) = integrate(grid, u.(grid); kwargs...)
+
+integrate!(out, grid::SupportGrid, u::Function; kwargs...
+  ) = integrate!(out, grid, u.(grid); kwargs...)
+
+_convolution!(grid::SupportGrid, u::Function, v
+  ) = _convolution!(grid, out, u.(grid), v)
+
+_convolution!(grid::SupportGrid, out, u, v::Function
+  ) = _convolution!(grid, out, u, v.(grid))
+
+_crosscorrelation!(grid::SupportGrid, out, u::Function, v
+  ) = _crosscorrelation!(grid, out, u.(grid), v)
+
+_crosscorrelation!(grid::SupportGrid, out, u, v::Function
+  ) = _crosscorrelation!(grid, out, u, v.(grid))
+
+_hilbert!(grid::SupportGrid, out, u::Function,
+  ) = _hilbert!(grid, out, u.(grid), v)
+
+
 ##################
 # Printing rules #
 ##################
