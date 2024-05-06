@@ -54,7 +54,7 @@ struct LinearGridOps{T} <: AbstractGridOps{T}
 
         dk = 2π / (padded_len * d)
 
-        ft_points = dk .* (collect(0:(padded_len-1)) .- padded_len ÷ 2)
+        ft_points = dk .* (collect(0:(ft_p.osz[1]-1)) .- ft_p.osz[1] ÷ 2)
 
         ft_arr = [(-1)^(i - 1) for (i, _) in enumerate(ft_work1)]
 
