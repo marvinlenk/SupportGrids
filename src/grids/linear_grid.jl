@@ -91,6 +91,7 @@ struct LinearGrid{T} <: SupportGrid{T}
     function LinearGrid(grid_min::Real, len::Int;
         complex_op::Bool=true, T::Type=Float64
     )
+        if isodd(len) @info "Odd length is highly discouraged!" end
 
         indices = 0:(len-1)
 
