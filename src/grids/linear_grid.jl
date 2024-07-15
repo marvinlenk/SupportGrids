@@ -68,10 +68,20 @@ struct LinearGridOps{T} <: AbstractGridOps{T}
 end
 
 """
-    LinearGrid(grid_min::Real, len::Int; complex_op=true, T::Type=Float64)
+    LinearGrid(grid_min::Real, len::Int; complex_op=true, expand=false, T::Type=Float64)
 
-Generates a symmetric equidistant grid from `grid_min` to `-grid_min` with `len` points.
+Generates an equidistant grid from `-|grid_min|` to `|grid_min|-d` with `len` points,
+where `d` is the discretization parameter (see below). When `expand=true` is set, the grid
+goes from `-|grid_min|-d` to `|grid_min|` instead.
+
 If operations on real arrays are expected, `complex_op` should be set to `false`.
+
+# Notes
+This construction ensures a simple relation between the continuous Fourier integral and the
+discrete Fourier transform (DFT). The last point is not missing, it is rather identified
+with the first point assuming periodicity of the signal.
+
+Usage of odd `len` is highly discouraged due to numerical inefficiency.
 
 # Fields
 - `grid_min`, `len` defined above.
@@ -82,23 +92,24 @@ If operations on real arrays are expected, `complex_op` should be set to `false`
 See also [`LinearGridOps`](@ref).
 """
 struct LinearGrid{T} <: SupportGrid{T}
-    grid_min::T            # Left bound
+    grid_min::T           # Left bound
     len::Int              # Number of points
     points::Vector{T}     # Array of grid points
     d::T                  # Discretisation parameter
-    op::LinearGridOps{T} # Tools for FFT operations on this grid
+    op::LinearGridOps{T}  # Tools for FFT operations on this grid
 
     function LinearGrid(grid_min::Real, len::Int;
-        complex_op::Bool=true, T::Type=Float64
+        complex_op::Bool=true, expand::Bool=false, T::Type=Float64
     )
         if isodd(len) @info "Odd length is highly discouraged!" end
 
         indices = 0:(len-1)
 
-        d = 2abs(grid_min) / len
+        # Ensures that the positive indices i=0,1,... go from 0 to abs(grid_min)
+        d = abs(grid_min) / ((len - expand) ÷ 2)
 
-        # Symmetric grid around 0, note that the last point is not included
-        points = d .* (collect(indices) .- len ÷ 2)
+        # "Symmetric" grid around 0, note that the last point is not included
+        points = d .* (collect(indices) .- (len) ÷ 2)
 
         new{T}(grid_min, len, points, d, LinearGridOps(points, complex_op; d))
     end
