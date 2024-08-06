@@ -36,9 +36,8 @@ export
     bft,
     bft!,
     derivative,
-    # derivative!,
-    integrate,
-    integrate!,
+    integral,
+    integral!,
     convolution,
     convolution!,
     crosscorrelation,
@@ -58,14 +57,15 @@ abstract type AbstractGridOps{T<:Any} end
 ###############################
 # Includes , docs and aliases #
 ###############################
-@doc "Alias: `∫ = integrate`" integrate
-@doc "Alias: `∫! = integrate!`" integrate!
+@doc "Alias: `∫ = integral`" integral
+@doc "Alias: `∫! = integral!`" integral!
 @doc "Alias: `conv = convolution`" convolution
 @doc "Alias: `conv = convolution!`" convolution!
 @doc "Alias: `xcorr = crosscorrelation`" crosscorrelation
 
 include("utility.jl")
 include("grid_shared.jl")
+include("analysis.jl")
 # include("non_grid_analysis.jl")
 # include("nonlinear_shared.jl")
 
@@ -81,8 +81,8 @@ include("grids/linear_grid.jl")
 # include("grids/sqrt_grid.jl")
 # include("grids/tan_grid.jl")
 
-const ∫ = integrate
-const ∫! = integrate!
+const ∫ = integral
+const ∫! = integral!
 export ∫, ∫!
 
 const conv = convolution
