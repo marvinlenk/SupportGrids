@@ -36,6 +36,8 @@ export
     bft,
     bft!,
     derivative,
+    antiderivative,
+    antiderivative!,
     integral,
     integral!,
     convolution,
