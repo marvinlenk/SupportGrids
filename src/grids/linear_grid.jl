@@ -222,6 +222,31 @@ hilbert!(grid::LinearGrid, out::AbstractVector, u::AbstractVector
 
 hilbert(grid::LinearGrid, u::AbstractVector) = hilbert!(grid, zero(u), u)
 
+######################
+# Finite differences #
+######################
+function _forward_diff!(grid::LinearGrid, out::AbstractVector, u::AbstractVector)
+  (;points, d) = grid
+  @. out[1:end-1] = (u[2:end] - u[1:end-1]) / d
+  out[end] = out[end-1]
+  return out
+end
+
+function _central_diff!(grid::LinearGrid, out::AbstractVector, u::AbstractVector)
+  (;points, d) = grid
+  out[1] = (u[2] - u[1]) / d
+  @. out[2:end-1] = (u[3:end] - u[1:end-2]) / 2d
+  out[end] = (u[end] - u[end-1]) / d
+  return out
+end
+
+function _backward_diff!(grid::LinearGrid, out::AbstractVector, u::AbstractVector)
+  (;points, d) = grid
+  out[1] = (u[2] - u[1]) / d
+  @. out[2:end] = (u[2:end] - u[1:end-1]) / d
+  return out
+end
+
 """
 Get index of y on the mesh (not rounded - i.e. allow for interpolated values)
 """

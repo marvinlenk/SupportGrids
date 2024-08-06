@@ -129,6 +129,79 @@ function antiderivative(grid::SupportGrid, u::AbstractVector; c=0.)
   return accumulate(accfunc, out, eachindex(u), init=weights[1] * u[1] + c)
 end
 
+######################
+# Simple Derivatives #
+######################
+# https://github.com/JuliaDiff/FiniteDiff.jl
+
+function _forward_diff!(grid::SupportGrid, out::AbstractVector, u::AbstractVector)
+  (;points) = grid
+  @. out[1:end-1] = (u[2:end] - u[1:end-1]) / (points[2:end] - points[1:end-1])
+  out[end] = out[end-1]
+  return out
+end
+
+function _central_diff!(grid::SupportGrid, out::AbstractVector, u::AbstractVector)
+  (;points) = grid
+  out[1] = (u[2] - u[1]) / (points[2] - points[1])
+  @. out[2:end-1] = (u[3:end] - u[1:end-2]) / (points[3:end] - points[1:end-2])
+  out[end] = (u[end] - u[end-1]) / (points[end] - points[end-1])
+  return out
+end
+
+function _backward_diff!(grid::SupportGrid, out::AbstractVector, u::AbstractVector)
+  (;points) = grid
+  out[1] = (u[2] - u[1]) / (points[2] - points[1])
+  @. out[2:end] = (u[2:end] - u[1:end-1]) / (points[2:end] - points[1:end-1])
+  return out
+end
+
+function derivative!(grid::SupportGrid, out::AbstractArray, u::AbstractArray;
+    dims::Int=1, direction::Symbol=:central)
+  @assert size(out) == size(u)
+  @assert dims <= ndims(u)
+  
+  differences_function! = if direction in (:forward, :fwd)
+    _forward_diff!
+  elseif direction in (:central, :center)
+    _central_diff!
+  elseif direction in (:backward, :back)
+    _backward_diff!
+  end
+  
+  # leftover dimensions flattened size
+  n_before = dims == 1 ? 1 : prod(size(u)[1:dims-1])
+  n_after = dims == ndims(u) ? 1 : prod(size(u)[dims+1:end])
+  
+  # flatten non-differentiated dimensions
+  u_reshaped = reshape(u, n_before, size(u, dims), n_after)
+  out_reshaped = reshape(out, n_before, size(out, dims), n_after)
+  
+  # take the differences
+  for j=1:n_after, i=1:n_before
+    @views u_v, out_v = u_reshaped[i,:,j], out_reshaped[i,:,j]
+    differences_function!(grid, out_v, u_v)
+  end
+  
+  return out
+end
+
+function derivative!(grid::SupportGrid, out::AbstractVector, u::AbstractVector;
+    direction::Symbol=:central)
+  @assert size(out) == size(u)
+  
+  return if direction in (:forward, :fwd)
+    _forward_diff!(grid, out, u)
+  elseif direction in (:central, :center)
+    _central_diff!(grid, out, u)
+  elseif direction in (:backward, :back)
+    _backward_diff!(grid, out, u)
+  end
+end
+
+derivative(grid::SupportGrid, u::AbstractArray; direction::Symbol=:central, kwargs...
+  ) = derivative!(grid, similar(u), u; direction, kwargs...)
+
 ################################
 # Lazy Operations on functions #
 ################################
@@ -136,6 +209,18 @@ integral(grid::SupportGrid, u::Function; kwargs...) = integral(grid, u.(grid); k
 
 integral!(grid::SupportGrid, out, u::Function; kwargs...
   ) = integral!(grid, out, u.(grid); kwargs...)
+
+antiderivative(grid::SupportGrid, u::Function; kwargs...
+  ) = antiderivative(grid, u.(grid); kwargs...)
+
+antiderivative!(grid::SupportGrid, out, u::Function; kwargs...
+  ) = antiderivative!(grid, out, u.(grid); kwargs...)
+
+derivative(grid::SupportGrid, u::Function; kwargs...
+  ) = derivative(grid, u.(grid); kwargs...)
+
+derivative!(grid::SupportGrid, out, u::Function; kwargs...
+  ) = derivative!(grid, out, u.(grid); kwargs...)
 
 convolution(grid::SupportGrid, u::Function, v
   ) = convolution(grid, out, u.(grid), v)
